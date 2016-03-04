@@ -3,17 +3,19 @@ package com.cache.util;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.naming.InitialContext;
 
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.cache.config.CacheConfig;
 
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisSentinelPool;
 
 public class SentinelPoolUtil {
-	
+	private static Logger logger = LoggerFactory.getLogger(SentinelPoolUtil.class);
 	private static Set<String> sentinels = null;
-	private static JedisPoolConfig jedisPoolConfig = null;
+	private static GenericObjectPoolConfig jedisPoolConfig = null;
 	private static JedisSentinelPool jedisSentinelPool = null;
 	private static SentinelPoolUtil sentinelPoolUtil=null;
 	//sentinel ip和端口
@@ -38,6 +40,10 @@ public class SentinelPoolUtil {
 		minIdle=Integer.parseInt(CacheConfig.getConfig("minIdle"));
 		maxTotal=Integer.parseInt(CacheConfig.getConfig("maxTotal"));
 		maxWaitMillis=Integer.parseInt(CacheConfig.getConfig("maxWaitMillis"));
+		logger.info(String.format("从配置文件中获取配置信息：sentinel_ip_port_0=[%s],sentinel_ip_port_1=[%s]"
+				+ "master_name=[%s],maxIdle=[%s],"
+				+ "minIdle=[%s],maxTotal=[%s],maxWaitMillis=[%s]", 
+				sentinel_ip_port_0,sentinel_ip_port_1,master_name,maxIdle,minIdle,maxTotal,maxWaitMillis));
 	}
 	
 	public static SentinelPoolUtil getSentinelPoolUtil(){
@@ -53,25 +59,33 @@ public class SentinelPoolUtil {
 	
 	public JedisSentinelPool getJedisSentinelPool(){
 		if(jedisSentinelPool==null){
+			logger.info("JedisSentinelPool 初始化");
 			init();
 		}
 		return jedisSentinelPool;
 	}
 	
 	public void init(){
-		initSentinelsSet();
-		initJedisPoolConfig();
-		initJedisSentinelPool();
+		try {
+			initSentinelsSet();
+			initJedisPoolConfig();
+			initJedisSentinelPool();
+		} catch (Exception e) {
+			logger.error("JedisSentinelPool 初始化失败",e);
+		}
+		
 	}
 	
 	private void initJedisSentinelPool(){
-		jedisSentinelPool=new JedisSentinelPool(master_name, sentinels, jedisPoolConfig);
+		jedisSentinelPool=new JedisSentinelPool(master_name, sentinels);
+		logger.info("initJedisSentinelPool :"+jedisSentinelPool);
 	}
 	
 	private void initSentinelsSet(){
 		sentinels=new HashSet<String>();
 		sentinels.add(sentinel_ip_port_0);
 		sentinels.add(sentinel_ip_port_1);
+		logger.info("initSentinelsSet");
 	}
 	
 	private void initJedisPoolConfig(){
@@ -80,6 +94,10 @@ public class SentinelPoolUtil {
 		jedisPoolConfig.setMinIdle(minIdle);
 		jedisPoolConfig.setMaxTotal(maxTotal);
 		jedisPoolConfig.setMaxWaitMillis(maxWaitMillis);
+		jedisPoolConfig.setTestOnBorrow(true);
+		jedisPoolConfig.setTestOnCreate(true);
+		jedisPoolConfig.setTestOnReturn(true);
+		logger.info("initJedisPoolConfig :"+jedisPoolConfig);
 	}
 	
 

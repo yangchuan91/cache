@@ -36,7 +36,7 @@ public class PropertiesPool {
 	  }
 
 	// 读取具体的配置
-	public static Object getParam(String key) {
+	public Object getParam(String key) {
 		try {
 			Object value = params.get(key);
 			return value;

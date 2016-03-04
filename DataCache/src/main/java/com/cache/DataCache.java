@@ -17,15 +17,25 @@ import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
  
 public class DataCache {
+	
     private static Logger logger = LoggerFactory.getLogger(DataCache.class);
-    private static JedisSentinelPool jedisSentinelPool;
+    private static JedisSentinelPool jedisSentinelPool=null;
+    private static DataCache cache=null;
+    private static boolean openLocalCache=false;
  
-    private void init() {
+    private static void initJedisSentinelPool() {
         jedisSentinelPool=SentinelPoolUtil.getSentinelPoolUtil().getJedisSentinelPool();
     }
     
-    public DataCache(){
-    	init();
+    static{
+    	initJedisSentinelPool();
+    }
+    
+    public static DataCache getIntance(){
+    	if(cache==null){
+    		cache=new DataCache();
+    	}
+    	return cache;
     }
  
     /**
@@ -41,7 +51,6 @@ public class DataCache {
         if (key == null || key.equals("")) {
             return 0;
         }
- 
         Jedis jedis = null;
         try {
             jedis = jedisSentinelPool.getResource();
@@ -846,10 +855,11 @@ public class DataCache {
         return false;
     }
  
-    public static boolean set(String key, String value) {
+    public boolean set(String key, String value) {
         Jedis jedis = null;
         try {
             jedis = jedisSentinelPool.getResource();
+            logger.error("jedis是否为空:",jedis==null);
             jedis.set(key, value);
             return true;
         } catch (Exception ex) {
